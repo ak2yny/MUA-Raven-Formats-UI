@@ -1,3 +1,9 @@
+# Themed tkinter files:
+Azure/
+tkBreeze/
+RavenFormatsUI.pyw
+RavenFormatsUI.txt
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
