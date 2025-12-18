@@ -127,10 +127,11 @@ class App(CTk):
             text='Change theme:'
         ).pack(side=RIGHT, padx=10, pady=10)
 
-        self.set_file_info(CONFIG.get('RECENT_INPUT_FILE', ''))
         self.format_string_xmlb.set(CONFIG.get('FORMAT_XMLB', 'engb'))
         self.format_string_text.set(CONFIG.get('FORMAT_TEXT', 'xml'))
         self.output_file_name.trace_add('write', self.output_file_name_changed)
+        self.input_file_name.trace_add('write', self.input_file_name_changed)
+        self.input_file_name.set(CONFIG.get('RECENT_INPUT_FILE', ''))
         output_file_name = CONFIG.get('RECENT_OUTPUT_FILE', '')
         if output_file_name:
             self.output_file_name.set(output_file_name)
@@ -141,12 +142,12 @@ class App(CTk):
     def drop_file(self, event):
         # if event.data:
         for f in self.tk.splitlist(event.data):
-            self.set_file_info(f)
+            self.input_file_name.set(f)
             return event.action
         return event.action
 
     def pick_file(self):
-        self.set_file_info(filedialog.askopenfilename())
+        self.input_file_name.set(filedialog.askopenfilename())
 
     def drop_output(self, event):
         # if event.data:
@@ -158,9 +159,9 @@ class App(CTk):
     def pick_output(self):
         self.output_file_name.set(filedialog.askopenfilename())
 
-    def set_file_info(self, filename: str):
+    def input_file_name_changed(self, *args):
+        filename = self.input_file_name.get()
         if filename:
-            self.input_file_name.set(filename)
             file = Path(filename)
             if file.suffix[1:] in XMLB_FORMATS:
                 self.convert_text.set('Decompile')
@@ -172,14 +173,17 @@ class App(CTk):
                 self.format_option_xmlb.pack(side=RIGHT, padx=(0, 10), pady=10)
                 self.format_option_text.pack_forget()
                 output_path = file.with_name(file.stem)
-                if output_path.suffix[1:] not in XMLB_FORMATS:
+                suffix = output_path.suffix[1:]
+                if suffix in XMLB_FORMATS:
+                    self.format_string_xmlb.set(suffix)
+                else:
                     output_path = output_path.with_name(f'{output_path.name}.{self.format_string_xmlb.get()}')
                 self.output_file_name.set(output_path)
         else:
-            self.input_file_name.set('')
             self.convert_text.set('Compile/Decompile')
 
-    def output_file_name_changed(self, *args): # https://stackoverflow.com/questions/29690463
+    def output_file_name_changed(self, *args):
+        # https://stackoverflow.com/questions/29690463
         filename = self.output_file_name.get()
         if filename:
             file = Path(filename)
@@ -238,6 +242,9 @@ class App(CTk):
             startfile(file) #.replace('/','\\')
             # else: # linux variants
             #     subprocess.call(('xdg-open', filename))
+            o = self.output_file_name.get()
+            self.output_file_name.set(self.input_file_name.get())
+            self.input_file_name.set(o)
 
     def save_settings(self):
         config.set('CONFIG', 'FORMAT_XMLB', self.format_string_xmlb.get())
