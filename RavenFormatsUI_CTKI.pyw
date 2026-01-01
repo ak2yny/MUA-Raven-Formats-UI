@@ -20,7 +20,7 @@ CONFIG = config['CONFIG']
 # getint()
 # getboolean()
 
-XMLB_FORMATS = ['engb', 'xmlb', 'itab', 'freb', 'gerb', 'spab', 'rusb', 'polb']
+XMLB_FORMATS = ['engb', 'xmlb', 'itab', 'freb', 'gerb', 'spab', 'rusb', 'polb', 'pkgb', 'boyb', 'chrb', 'navb']
 TEXT_FORMATS = ['xml', 'json', 'txt']
 
 set_default_color_theme('green')
@@ -222,10 +222,9 @@ class App(CTk):
         else:
             isRF = False
             with input_path.open('r') as f:
-                for line in f:
-                    line = line.strip()
-                    if line:
-                        isRF = line[0] in ('<', '{') and input_path.suffix in ('.xml', '.json')
+                while c := f.read(1):
+                    if not c.isspace():
+                        isRF = c in ('<', '{') and input_path.suffix in ('.xml', '.json')
                         break
             if isRF:
                 compile(input_path, output_path)
