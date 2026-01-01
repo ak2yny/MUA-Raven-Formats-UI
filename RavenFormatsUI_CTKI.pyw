@@ -7,18 +7,14 @@ from raven_formats.xmlb import compile, decompile
 from sys import executable
 from tkinterdnd2 import TkinterDnD, DND_FILES
 from xmlb_fake import to_fake_xml, from_fake_xml
-import darkdetect
 
 config_file = Path(executable).parent / 'config.ini' # __file__
 config = ConfigParser()
 if config_file.exists():
-    config.read(config_file) # works with Path?
+    config.read(config_file)
 else:
     config.add_section('CONFIG')
 CONFIG = config['CONFIG']
-# getfloat()
-# getint()
-# getboolean()
 
 XMLB_FORMATS = ['engb', 'xmlb', 'itab', 'freb', 'gerb', 'spab', 'rusb', 'polb', 'pkgb', 'boyb', 'chrb', 'navb']
 TEXT_FORMATS = ['xml', 'json', 'txt']
@@ -36,26 +32,23 @@ class App(CTk):
         super().__init__()
         self.title(title)
         self.iconbitmap(Path(__file__).parent / 'MM.ico')
-        # self.geometry(f'{size[0]}x{size[1]}')
-        # self.minsize(size[0], size[1])
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
 
-        #self.instructions = StringVar()
-        #
-        #self.top = CTkFrame(self, fg_color='transparent')
-        #self.top.pack()
-        top = CTkFrameDnD(self, corner_radius=0)
-        top.pack(fill=X)
-        middle = CTkFrameDnD(self, corner_radius=0)
-        middle.pack(fill=X)
-        bottom = CTkFrame(self, corner_radius=0)
-        bottom.pack(fill=X)
+        self.decompile = True
 
         self.input_file_name = StringVar()
         self.output_file_name = StringVar()
         self.convert_text = StringVar()
         self.format_string_xmlb = StringVar()
         self.format_string_text = StringVar()
+        self.current_theme = StringVar()
+
+        top = CTkFrameDnD(self, corner_radius=0)
+        top.pack(fill=X)
+        middle = CTkFrameDnD(self, corner_radius=0)
+        middle.pack(fill=X)
+        bottom = CTkFrame(self, corner_radius=0)
+        bottom.pack(fill=X)
 
         top.drop_target_register(DND_FILES)
         top.dnd_bind('<<Drop>>', self.drop_file)
@@ -65,22 +58,22 @@ class App(CTk):
         middle.drop_target_register(DND_FILES)
         middle.dnd_bind('<<Drop>>', self.drop_output)
 
-        input_file_name_e = CTkEntry(
+        _ = CTkEntry(
             top,
             textvariable=self.input_file_name
         ).pack(side=LEFT, padx=10, pady=10, fill=BOTH, expand=True)
-        browse_button = CTkButton(
+        _ = CTkButton(
             top,
             width=32,
             text='...',
             command=self.pick_file
         ).pack(side=LEFT, padx=(0, 10), pady=10)
 
-        input_file_name_e = CTkEntry(
+        _ = CTkEntry(
             middle,
             textvariable=self.output_file_name
         ).pack(side=LEFT, padx=10, pady=10, fill=BOTH, expand=True)
-        browse_button = CTkButton(
+        _ = CTkButton(
             middle,
             width=32,
             text='...',
@@ -99,45 +92,45 @@ class App(CTk):
             command=self.switch_format
         )
 
-        convert_button = CTkButton(
+        _ = CTkButton(
             bottom,
             textvariable=self.convert_text,
             command=self.convert
         ).pack(side=LEFT, padx=10, pady=10)
 
-        edit_button = CTkButton(
+        _ = CTkButton(
             bottom,
             text='Edit',
             command=self.edit
         ).pack(side=LEFT, padx=10, pady=10)
 
-        save_button = CTkButton(
+        _ = CTkButton(
             bottom,
             text='Save Settings',
             command=self.save_settings
         ).pack(side=LEFT, padx=10, pady=10)
 
-        theme_option = CTkOptionMenu(
+        _ = CTkOptionMenu(
             bottom,
             values=['System', 'Light', 'Dark'],
+            variable=self.current_theme,
             command=self.switch_theme
         ).pack(side=RIGHT, padx=10, pady=10)
-        theme_label = CTkLabel(
+        _ = CTkLabel(
             bottom,
             text='Change theme:'
         ).pack(side=RIGHT, padx=10, pady=10)
 
         self.format_string_xmlb.set(CONFIG.get('FORMAT_XMLB', 'engb'))
         self.format_string_text.set(CONFIG.get('FORMAT_TEXT', 'xml'))
+        self.current_theme.set(theme := CONFIG.get('THEME', 'System'))
         self.output_file_name.trace_add('write', self.output_file_name_changed)
         self.input_file_name.trace_add('write', self.input_file_name_changed)
         self.input_file_name.set(CONFIG.get('RECENT_INPUT_FILE', ''))
         output_file_name = CONFIG.get('RECENT_OUTPUT_FILE', '')
         if output_file_name:
             self.output_file_name.set(output_file_name)
-
-        self.current_theme = 'System'
-        self.fix_theme(self.current_theme)
+        if theme != 'System': self.switch_theme(theme)
 
     def drop_file(self, event):
         # if event.data:
@@ -163,7 +156,8 @@ class App(CTk):
         filename = self.input_file_name.get()
         if filename:
             file = Path(filename)
-            if file.suffix[1:] in XMLB_FORMATS:
+            self.decompile = file.suffix[1:] in XMLB_FORMATS
+            if self.decompile:
                 self.convert_text.set('Decompile')
                 self.format_option_text.pack(side=RIGHT, padx=(0, 10), pady=10)
                 self.format_option_xmlb.pack_forget()
@@ -173,10 +167,7 @@ class App(CTk):
                 self.format_option_xmlb.pack(side=RIGHT, padx=(0, 10), pady=10)
                 self.format_option_text.pack_forget()
                 output_path = file.with_name(file.stem)
-                suffix = output_path.suffix[1:]
-                if suffix in XMLB_FORMATS:
-                    self.format_string_xmlb.set(suffix)
-                else:
+                if output_path.suffix[1:] not in XMLB_FORMATS:
                     output_path = output_path.with_name(f'{output_path.name}.{self.format_string_xmlb.get()}')
                 self.output_file_name.set(output_path)
         else:
@@ -186,13 +177,14 @@ class App(CTk):
         # https://stackoverflow.com/questions/29690463
         filename = self.output_file_name.get()
         if filename:
-            file = Path(filename)
-            suffix = Path(filename).suffix[1:]
-            if suffix:
-                if suffix in XMLB_FORMATS:
-                    self.format_string_xmlb.set(suffix)
-                elif suffix in TEXT_FORMATS:
+            *path, suffix = filename.rsplit('.', 1)
+            if path:
+                if self.decompile:
+                    if suffix not in TEXT_FORMATS:
+                        suffix = 'txt'
                     self.format_string_text.set(suffix)
+                elif suffix in XMLB_FORMATS:
+                        self.format_string_xmlb.set(suffix)
 
     def switch_format(self, format_string: str):
         output_file_name = self.output_file_name.get()
@@ -201,20 +193,16 @@ class App(CTk):
             self.output_file_name.set(output_path.with_name(f'{output_path.stem}.{format_string}'))
 
     def switch_theme(self, theme: str):
-        self.current_theme = theme
         set_appearance_mode(theme)
-        self.fix_theme(theme)
-
-    def fix_theme(self, theme: str):
-        if theme == 'System': theme = darkdetect.theme()
 
     def convert(self):
         out = self.output_file_name.get()
-        if not out:
+        inp = self.input_file_name.get()
+        if not out or not inp:
             return
-        input_path = Path(self.input_file_name.get())
+        input_path = Path(inp)
         output_path = Path(out)
-        if self.convert_text.get() == 'Decompile':
+        if self.decompile:
             if self.format_string_text.get() == 'txt':
                 to_fake_xml(input_path, output_path)
             else:
@@ -232,7 +220,13 @@ class App(CTk):
                 from_fake_xml(input_path, output_path)
 
     def edit(self):
-        file = Path(self.output_file_name.get())
+        if self.decompile:
+            o = self.output_file_name.get()
+            self.output_file_name.set(self.input_file_name.get())
+            self.input_file_name.set(o)
+            file = Path(o)
+        else:
+            file = Path(self.input_file_name.get())
         if file.exists():
             # from sys import platform
             # if platform == 'darwin':
@@ -241,15 +235,13 @@ class App(CTk):
             startfile(file) #.replace('/','\\')
             # else: # linux variants
             #     subprocess.call(('xdg-open', filename))
-            o = self.output_file_name.get()
-            self.output_file_name.set(self.input_file_name.get())
-            self.input_file_name.set(o)
 
     def save_settings(self):
         config.set('CONFIG', 'FORMAT_XMLB', self.format_string_xmlb.get())
         config.set('CONFIG', 'FORMAT_TEXT', self.format_string_text.get())
         config.set('CONFIG', 'RECENT_INPUT_FILE', self.input_file_name.get())
         config.set('CONFIG', 'RECENT_OUTPUT_FILE', self.output_file_name.get())
+        config.set('CONFIG', 'THEME', self.current_theme.get())
         with config_file.open('w') as f:
             config.write(f)
 
