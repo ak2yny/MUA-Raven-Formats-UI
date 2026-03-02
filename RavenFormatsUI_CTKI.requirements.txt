@@ -1,3 +1,4 @@
+pyinstaller
 customtkinter
 raven-formats
 tkinterdnd2

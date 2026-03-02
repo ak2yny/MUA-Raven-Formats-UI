@@ -1,12 +1,18 @@
 from tkinter import *
 from customtkinter import *
 from configparser import ConfigParser
-from os import startfile
 from pathlib import Path
 from raven_formats.xmlb import compile, decompile
-from sys import executable
+from sys import executable, platform
 from tkinterdnd2 import TkinterDnD, DND_FILES
 from xmlb_fake import to_fake_xml, from_fake_xml
+
+if platform in ['win64', 'win32']:
+    from os import startfile
+    fopen = lambda f : startfile(f) #.replace('/','\\')
+else: # linux and mac (darwin)
+    import subprocess
+    fopen = lambda f : subprocess.call(('open' if platform == 'darwin' else 'xdg-open', f))
 
 config_file = Path(executable).parent / 'config.ini' # __file__
 config = ConfigParser()
@@ -31,7 +37,12 @@ class App(CTk):
     def __init__(self, title):
         super().__init__()
         self.title(title)
-        self.iconbitmap(Path(__file__).parent / 'MM.ico')
+        if platform in ['win64', 'win32']:
+            self.iconbitmap(Path(__file__).parent / 'MM.ico')
+        elif platform == 'darwin':
+            self.iconbitmap(Path(__file__).parent / 'MM.icns')
+        else: # linux variants
+            self.iconphoto(False, PhotoImage(file=Path(__file__).parent / 'MM.png'))
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
 
         self.decompile = True
@@ -228,13 +239,7 @@ class App(CTk):
         else:
             file = Path(self.input_file_name.get())
         if file.exists():
-            # from sys import platform
-            # if platform == 'darwin':
-            #     subprocess.call(('open', filename))
-            # elif platform in ['win64', 'win32']:
-            startfile(file) #.replace('/','\\')
-            # else: # linux variants
-            #     subprocess.call(('xdg-open', filename))
+            fopen(file)
 
     def save_settings(self):
         config.set('CONFIG', 'FORMAT_XMLB', self.format_string_xmlb.get())
