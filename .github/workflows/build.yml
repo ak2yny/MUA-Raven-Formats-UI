@@ -1,0 +1,62 @@
+name: Build Raven-Formats UI
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build_and_release:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest]
+
+    permissions:
+      contents: write
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+
+    - name: Install Dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r RavenFormatsUI_CTKI.requirements.txt
+
+    - name: Build Executable
+      run: python build.py ${GITHUB_REF_NAME}
+
+    - name: Prepare MacOS Artifact
+      if: matrix.os == 'macos-latest'
+      run: |
+        cd dist
+        zip -r RavenFormatsUI_CTKI-MacOS.zip *.app
+
+    - name: Upload Artifacts
+      uses: actions/upload-artifact@v4
+      if: github.ref_type != 'tag'
+      with:
+        name: RavenFormatsUI-${{ matrix.os }}
+        path: |
+          dist/*.exe
+          dist/*.app
+          dist/*-Linux
+
+    - name: Release
+      uses: softprops/action-gh-release@v2
+      if: github.ref_type == 'tag'
+      with:
+        generate_release_notes: true
+        files: |
+          dist/*.exe
+          dist/*.zip
+          dist/*-Linux
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -14,7 +14,7 @@ VSVersionInfo(
       [
       StringTable(
         '040904B0',
-        [StringStruct('FileVersion', '1.5'),
+          [StringStruct('FileVersion', '1.5'),
         StringStruct('CompanyName', 'ak2yny'),
         StringStruct('FileDescription', 'Graphic User Interface for Raven-Formats Xmlb by nikita488'),
         StringStruct('OriginalFilename', 'RavenFormatsUI_CTKI.py'),
