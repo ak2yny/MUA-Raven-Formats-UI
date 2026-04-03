@@ -6,6 +6,7 @@ from raven_formats.xmlb import compile, decompile
 from sys import executable, platform
 from tkinterdnd2 import TkinterDnD, DND_FILES
 from xmlb_fake import to_fake_xml, from_fake_xml
+import logging
 
 if platform in ['win64', 'win32']:
     from os import startfile
@@ -14,7 +15,10 @@ else: # linux and mac (darwin)
     import subprocess
     fopen = lambda f : subprocess.call(('open' if platform == 'darwin' else 'xdg-open', f))
 
-config_file = Path(executable).parent / 'config.ini' # __file__
+CD = Path(executable).parent # __file__
+config_file = CD / 'config.ini'
+log_file = CD / 'error.log'
+logging.basicConfig(filename=log_file, encoding='utf-8', level=logging.DEBUG)
 config = ConfigParser()
 if config_file.exists():
     config.read(config_file)
@@ -213,22 +217,27 @@ class App(CTk):
             return
         input_path = Path(inp)
         output_path = Path(out)
-        if self.decompile:
-            if self.format_string_text.get() == 'txt':
-                to_fake_xml(input_path, output_path)
+        try:
+            if self.decompile:
+                if self.format_string_text.get() == 'txt':
+                    to_fake_xml(input_path, output_path)
+                else:
+                    decompile(input_path, output_path, True)
             else:
-                decompile(input_path, output_path, True)
-        else:
-            isRF = False
-            with input_path.open('r') as f:
-                while c := f.read(1):
-                    if not c.isspace():
-                        isRF = c in ('<', '{') and input_path.suffix in ('.xml', '.json')
-                        break
-            if isRF:
-                compile(input_path, output_path)
-            else:
-                from_fake_xml(input_path, output_path)
+                isRF = False
+                with input_path.open('r') as f:
+                    while c := f.read(1):
+                        if not c.isspace():
+                            isRF = c in ('<', '{') and input_path.suffix in ('.xml', '.json')
+                            break
+                if isRF:
+                    compile(input_path, output_path)
+                else:
+                    from_fake_xml(input_path, output_path)
+        except Exception as Argument:
+            with log_file.open('a') as f:
+                f.write('=' * 80 + '\n')
+            logging.exception('')
 
     def edit(self):
         if self.decompile:
